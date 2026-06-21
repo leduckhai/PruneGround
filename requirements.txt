@@ -1,0 +1,10 @@
+numpy
+open3d
+trimesh
+pyrender
+Pillow
+torch
+torchvision
+transformers==4.51.3
+accelerate
+qwen-vl-utils[decord]
