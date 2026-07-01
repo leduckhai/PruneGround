@@ -79,6 +79,28 @@ y1 < y2):
 '''
 
 
+# Minimal prompt closer to Qwen2.5-VL's native grounding format (single image,
+# no multi-step reasoning instructions). Smaller checkpoints (e.g. the 3B model)
+# tend to default to a full-image box on the long, structured PROMPT_TEMPLATE
+# above, since the multi-image + 3D-coordinate setup is out-of-distribution for
+# them; this leaner prompt trades away the oblique/depth context for a format
+# the model is more likely to follow precisely.
+SIMPLE_PROMPT_TEMPLATE = '''Locate "{description}" in this topview image of a room and determine its 2D bounding box.
+
+Output only the final answer as a JSON list, in exactly this format (pixel coordinates in the image, x1 < x2, y1 < y2):
+```json
+[{{"bbox_2d": [x1, y1, x2, y2], "label": "{description}"}}]
+```
+'''
+
+
+def build_simple_messages(scene_dir, description):
+    return [{"role": "user", "content": [
+        {"type": "image", "image": os.path.join(scene_dir, "topview.png")},
+        {"type": "text", "text": SIMPLE_PROMPT_TEMPLATE.format(description=description)},
+    ]}]
+
+
 def build_messages(scene_dir, description, metadata, sideview_max_pixels=None):
     # The topview image must keep (close to) its native resolution: its bbox_2d
     # output is interpreted in the pixel space of the image the model actually
@@ -121,6 +143,22 @@ def parse_bboxes(output_text):
         except json.JSONDecodeError:
             pass
 
+    # Fallback: the model sometimes emits a malformed wrapper around an
+    # otherwise valid "bbox_2d": [...] array (e.g. a stray extra "}" or a
+    # missing closing "]" for the outer list), which breaks strict json.loads
+    # above. Pull the array out directly instead of relying on the wrapper.
+    bbox_match = re.search(
+        r'"bbox_2d"\s*:\s*\[\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,'
+        r'\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\]',
+        output_text,
+    )
+    if bbox_match:
+        label_match = re.search(r'"label"\s*:\s*"([^"]*)"', output_text)
+        return [{
+            "bbox_2d": [float(v) for v in bbox_match.groups()],
+            "label": label_match.group(1) if label_match else "",
+        }]
+
     # Fallback: larger models often narrate their reasoning and state the final
     # box as prose, e.g. "Top-left corner: (x=0, y=0)" / "Bottom-right corner:
     # (x=390, y=512)". Take the last two (x, y) pairs as the final answer.
@@ -156,13 +194,23 @@ if __name__ == "__main__":
              "(lower to reduce GPU memory use). Does not affect topview.png, "
              "whose resolution must match metadata.json for bbox_2d to align."
     )
+    parser.add_argument(
+        "--prompt_style", choices=["full", "simple"], default="full",
+        help="'full' uses the paper's Appendix C prompt (topview + 4 oblique "
+             "RGB-D views + reasoning steps). 'simple' uses only the topview "
+             "image with a minimal grounding prompt, which smaller checkpoints "
+             "(e.g. the 3B model) tend to follow more reliably."
+    )
     args = parser.parse_args()
 
     scene_dir = os.path.join(args.output_dir, args.scene_id)
-    with open(os.path.join(scene_dir, "metadata.json")) as f:
-        metadata = json.load(f)
 
-    messages = build_messages(scene_dir, args.description, metadata, args.sideview_max_pixels)
+    if args.prompt_style == "simple":
+        messages = build_simple_messages(scene_dir, args.description)
+    else:
+        with open(os.path.join(scene_dir, "metadata.json")) as f:
+            metadata = json.load(f)
+        messages = build_messages(scene_dir, args.description, metadata, args.sideview_max_pixels)
 
     processor = AutoProcessor.from_pretrained(args.model_name)
     model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
