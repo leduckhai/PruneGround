@@ -6,8 +6,8 @@ Duc Cao Dinh*, Khai Le-Duc*, Florent Draye, Chris Ngo, Terry Jingchen Zhang, Ber
 
 - [x] Render guide (topview + oblique views)
 - [x] Topview box prediction by VLM
-- [ ] Prune scene
-- [ ] Multiview render guide
+- [x] Prune scene
+- [ ] Sideview render
 - [ ] Reformulation
 - [ ] Grounding
 
@@ -44,7 +44,7 @@ Each scene requires two files under `data_dir`:
 For each scene, generate the topview image and 4 oblique RGB-D side views:
 
 ```bash
-python render.py --scene_id scene0011_00 --data_dir examples/data --output_dir examples/output
+python render_top\&oblique_view.py --scene_id scene0011_00 --data_dir examples/data --output_dir examples/output
 ```
 
 This produces, under `examples/output/{scene_id}/`:
@@ -57,7 +57,7 @@ This produces, under `examples/output/{scene_id}/`:
 Run the 2D bounding box prediction on a rendered scene (see Appendix C of the paper for the full prompt structure):
 
 ```bash id="zv0wtx"
-python query_qwen.py \
+python LGSP.py \
     --scene_id scene0011_00 \
     --output_dir examples/output \
     --description "This is a single chair nearest the TV" \

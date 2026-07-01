@@ -3,10 +3,23 @@ import json
 import os
 import re
 
+import numpy as np
+import open3d as o3d
 import torch
 from PIL import Image, ImageDraw
 from qwen_vl_utils import process_vision_info
 from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
+
+import importlib.util
+import pathlib
+
+_spec = importlib.util.spec_from_file_location(
+    "render_top_oblique_view",
+    pathlib.Path(__file__).parent / "render_top&oblique_view.py",
+)
+_render_mod = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_render_mod)
+load_aligned_mesh = _render_mod.load_aligned_mesh
 
 PROMPT_TEMPLATE = '''Task:
 Given the description: "{description}", Determine the relevant region in the
@@ -170,6 +183,55 @@ def parse_bboxes(output_text):
     raise ValueError(f"Could not parse bounding boxes from model output: {output_text}")
 
 
+def prune_scene(mesh, bboxes, metadata, padding=0.10):
+    """
+    Prune mesh to the 3D XY column corresponding to the predicted topview bbox.
+
+    Pixel-to-world mapping (camera up = world +Y, so image rows are Y-flipped):
+      world_x = xmin + (px / w) * (xmax - xmin)
+      world_y = ymax - (py / h) * (ymax - ymin)
+
+    10% padding is added to each side before clipping to scene bounds.
+    Z is unconstrained — the full height column is kept.
+    """
+    x1, y1, x2, y2 = [float(v) for v in bboxes[0]["bbox_2d"]]
+    w, h = metadata["w"], metadata["h"]
+
+    aabb = mesh.get_axis_aligned_bounding_box()
+    xmin, ymin, _ = aabb.get_min_bound()
+    xmax, ymax, _ = aabb.get_max_bound()
+
+    wx1 = xmin + (x1 / w) * (xmax - xmin)
+    wx2 = xmin + (x2 / w) * (xmax - xmin)
+    wy1 = ymax - (y2 / h) * (ymax - ymin)  # larger py → smaller world Y
+    wy2 = ymax - (y1 / h) * (ymax - ymin)
+
+    dx = (wx2 - wx1) * padding
+    dy = (wy2 - wy1) * padding
+    wx1 = max(wx1 - dx, xmin)
+    wx2 = min(wx2 + dx, xmax)
+    wy1 = max(wy1 - dy, ymin)
+    wy2 = min(wy2 + dy, ymax)
+
+    vertices = np.asarray(mesh.vertices)
+    in_region = (
+        (vertices[:, 0] >= wx1) & (vertices[:, 0] <= wx2) &
+        (vertices[:, 1] >= wy1) & (vertices[:, 1] <= wy2)
+    )
+
+    triangles = np.asarray(mesh.triangles)
+    keep = in_region[triangles[:, 0]] & in_region[triangles[:, 1]] & in_region[triangles[:, 2]]
+
+    pruned = o3d.geometry.TriangleMesh()
+    pruned.vertices = mesh.vertices
+    pruned.triangles = o3d.utility.Vector3iVector(triangles[keep])
+    if mesh.has_vertex_colors():
+        pruned.vertex_colors = mesh.vertex_colors
+    pruned.remove_unreferenced_vertices()
+
+    return pruned
+
+
 def draw_bboxes(topview_path, bboxes, output_path):
     image = Image.open(topview_path).convert("RGB")
     draw = ImageDraw.Draw(image)
@@ -184,7 +246,9 @@ def draw_bboxes(topview_path, bboxes, output_path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--scene_id", default="scene0085_00")
+    parser.add_argument("--data_dir", default="examples/data")
     parser.add_argument("--output_dir", default="examples/output")
+    parser.add_argument("--pruned_dir", default="examples/pruned")
     parser.add_argument("--description", required=True)
     parser.add_argument("--model_name", default="Qwen/Qwen2.5-VL-3B-Instruct")
     parser.add_argument("--max_new_tokens", type=int, default=512)
@@ -205,11 +269,12 @@ if __name__ == "__main__":
 
     scene_dir = os.path.join(args.output_dir, args.scene_id)
 
+    with open(os.path.join(scene_dir, "metadata.json")) as f:
+        metadata = json.load(f)
+
     if args.prompt_style == "simple":
         messages = build_simple_messages(scene_dir, args.description)
     else:
-        with open(os.path.join(scene_dir, "metadata.json")) as f:
-            metadata = json.load(f)
         messages = build_messages(scene_dir, args.description, metadata, args.sideview_max_pixels)
 
     processor = AutoProcessor.from_pretrained(args.model_name)
@@ -243,3 +308,10 @@ if __name__ == "__main__":
     pred_path = os.path.join(scene_dir, "topview_pred.png")
     draw_bboxes(os.path.join(scene_dir, "topview.png"), bboxes, pred_path)
     print(f"Saved annotated topview to {pred_path}")
+
+    mesh = load_aligned_mesh(args.scene_id, args.data_dir)
+    pruned = prune_scene(mesh, bboxes, metadata)
+    os.makedirs(args.pruned_dir, exist_ok=True)
+    pruned_path = os.path.join(args.pruned_dir, f"{args.scene_id}.ply")
+    o3d.io.write_triangle_mesh(pruned_path, pruned)
+    print(f"Saved pruned mesh to {pruned_path}")
