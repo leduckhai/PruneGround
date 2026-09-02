@@ -20,6 +20,7 @@ _spec = importlib.util.spec_from_file_location(
 _render_mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_render_mod)
 load_aligned_mesh = _render_mod.load_aligned_mesh
+render_local_views = _render_mod.render_local_views
 
 PROMPT_TEMPLATE = '''Task:
 Given the description: "{description}", Determine the relevant region in the
@@ -183,7 +184,34 @@ def parse_bboxes(output_text):
     raise ValueError(f"Could not parse bounding boxes from model output: {output_text}")
 
 
-def prune_scene(mesh, bboxes, metadata, padding=0.10):
+def _expand_interval(lo, hi, bound_lo, bound_hi, padding, min_size):
+    """
+    Expand [lo, hi] by `padding` on each side, enforce a `min_size` minimum extent,
+    then fit the result inside [bound_lo, bound_hi].
+
+    When the expanded interval runs past a scene bound it is *shifted* back inside
+    rather than truncated, so the requested extent is preserved wherever the scene
+    is large enough to allow it.
+    """
+    d = (hi - lo) * padding
+    lo, hi = lo - d, hi + d
+
+    if hi - lo < min_size:
+        center = (lo + hi) / 2
+        lo, hi = center - min_size / 2, center + min_size / 2
+
+    if lo < bound_lo:
+        hi += bound_lo - lo
+        lo = bound_lo
+    if hi > bound_hi:
+        lo -= hi - bound_hi
+        hi = bound_hi
+
+    # Only bites when the scene itself is smaller than the requested extent.
+    return max(lo, bound_lo), min(hi, bound_hi)
+
+
+def prune_scene(mesh, bboxes, metadata, padding=0.25, min_size=1.0):
     """
     Prune mesh to the 3D XY column corresponding to the predicted topview bbox.
 
@@ -191,8 +219,10 @@ def prune_scene(mesh, bboxes, metadata, padding=0.10):
       world_x = xmin + (px / w) * (xmax - xmin)
       world_y = ymax - (py / h) * (ymax - ymin)
 
-    10% padding is added to each side before clipping to scene bounds.
-    Z is unconstrained — the full height column is kept.
+    Post-processing follows Sec. 3.2 of the paper: the box is padded on each side
+    and then held to a minimum extent (`min_size`, in meters), so a box drawn tight
+    around a small target still retains the surrounding context that the anchors in
+    the description refer to. Z is unconstrained — the full height column is kept.
     """
     x1, y1, x2, y2 = [float(v) for v in bboxes[0]["bbox_2d"]]
     w, h = metadata["w"], metadata["h"]
@@ -206,12 +236,11 @@ def prune_scene(mesh, bboxes, metadata, padding=0.10):
     wy1 = ymax - (y2 / h) * (ymax - ymin)  # larger py → smaller world Y
     wy2 = ymax - (y1 / h) * (ymax - ymin)
 
-    dx = (wx2 - wx1) * padding
-    dy = (wy2 - wy1) * padding
-    wx1 = max(wx1 - dx, xmin)
-    wx2 = min(wx2 + dx, xmax)
-    wy1 = max(wy1 - dy, ymin)
-    wy2 = min(wy2 + dy, ymax)
+    wx1, wx2 = _expand_interval(wx1, wx2, xmin, xmax, padding, min_size)
+    wy1, wy2 = _expand_interval(wy1, wy2, ymin, ymax, padding, min_size)
+
+    print(f"Pruned region: {wx2 - wx1:.2f} m x {wy2 - wy1:.2f} m "
+          f"(scene {xmax - xmin:.2f} m x {ymax - ymin:.2f} m)")
 
     vertices = np.asarray(mesh.vertices)
     in_region = (
@@ -259,6 +288,17 @@ if __name__ == "__main__":
              "whose resolution must match metadata.json for bbox_2d to align."
     )
     parser.add_argument(
+        "--prune_padding", type=float, default=0.25,
+        help="Fraction of the predicted box size added on each side before pruning. "
+             "Raise it if the pruned region crops away anchors the description refers to."
+    )
+    parser.add_argument(
+        "--prune_min_size", type=float, default=1.0,
+        help="Minimum extent (meters) of the pruned region along each of x and y "
+             "(Sec. 3.2 of the paper). Keeps a tight box around a small target from "
+             "cutting away its surrounding context."
+    )
+    parser.add_argument(
         "--prompt_style", choices=["full", "simple"], default="full",
         help="'full' uses the paper's Appendix C prompt (topview + 4 oblique "
              "RGB-D views + reasoning steps). 'simple' uses only the topview "
@@ -296,7 +336,18 @@ if __name__ == "__main__":
         return_tensors="pt",
     ).to(model.device)
 
-    output_ids = model.generate(**inputs, max_new_tokens=args.max_new_tokens)
+    # Qwen2.5-VL ships generation_config.json with do_sample=true (temperature=1e-6).
+    # That is near-greedy, but when two candidate objects score almost equally the
+    # sampler still breaks the tie at random, so the predicted box can jump between
+    # objects across runs. Force greedy decoding to make the prediction reproducible.
+    output_ids = model.generate(
+        **inputs,
+        max_new_tokens=args.max_new_tokens,
+        do_sample=False,
+        temperature=None,
+        top_p=None,
+        top_k=None,
+    )
     trimmed_ids = output_ids[:, inputs.input_ids.shape[1]:]
     output_text = processor.batch_decode(
         trimmed_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True
@@ -310,8 +361,12 @@ if __name__ == "__main__":
     print(f"Saved annotated topview to {pred_path}")
 
     mesh = load_aligned_mesh(args.scene_id, args.data_dir)
-    pruned = prune_scene(mesh, bboxes, metadata)
+    pruned = prune_scene(mesh, bboxes, metadata, args.prune_padding, args.prune_min_size)
     os.makedirs(args.pruned_dir, exist_ok=True)
     pruned_path = os.path.join(args.pruned_dir, f"{args.scene_id}.ply")
     o3d.io.write_triangle_mesh(pruned_path, pruned)
     print(f"Saved pruned mesh to {pruned_path}")
+
+    local_views_dir = os.path.join(scene_dir, "local_views")
+    local_x, local_y = render_local_views(pruned, mesh, local_views_dir)
+    print(f"Saved local views to {local_views_dir}")

@@ -1,0 +1,28 @@
+{
+  "target": "sofa chair",
+  "anchors": [
+    "window"
+  ],
+  "anchors_visual": [
+    "wall",
+    "floor"
+  ],
+  "target_properties": [
+    "brown leather, comfortable"
+  ],
+  "augmented_target_properties": [
+    "has cushions, positioned near the window"
+  ],
+  "utterances": [
+    "the sofa chair is in front of the window",
+    "the sofa chair is next to the wall",
+    "the sofa chair is on the floor"
+  ],
+  "augmented_utterances": [
+    "the sofa chair is behind the black coffee table",
+    "the sofa chair is above the rug"
+  ],
+  "raw": "- target: sofa chair\n- anchors name: window\n- anchors not in description but visible: wall, floor\n- reformulated_description:\n  + target properties: brown leather, comfortable\n  + augmented target properties: has cushions, positioned near the window\n  + single target single anchor utterances:\n    - the sofa chair is in front of the window\n    - the sofa chair is next to the wall\n    - the sofa chair is on the floor\n  + augmented single target - single anchor utterances:\n    - the sofa chair is behind the black coffee table\n    - the sofa chair is above the rug",
+  "original_description": "This is the big sofa chair new the large window",
+  "reformulated_description": "Target: sofa chair\n- brown leather, comfortable\n- has cushions, positioned near the window\n- the sofa chair is in front of the window\n- the sofa chair is next to the wall\n- the sofa chair is on the floor\n- the sofa chair is behind the black coffee table\n- the sofa chair is above the rug"
+}

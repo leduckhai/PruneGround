@@ -1,0 +1,26 @@
+{
+  "target": "sofa",
+  "anchors": [
+    "door",
+    "cabinet"
+  ],
+  "anchors_visual": [
+    "bookshelf"
+  ],
+  "target_properties": [
+    "black, next to the door"
+  ],
+  "augmented_target_properties": [
+    "has a cushion, has a remote control"
+  ],
+  "utterances": [
+    "the sofa is next to the door",
+    "the sofa is next to the cabinet"
+  ],
+  "augmented_utterances": [
+    "the sofa is next to the bookshelf"
+  ],
+  "raw": "- target: sofa\n- anchors name: door, cabinet\n- anchors not in description but visible: bookshelf\n- reformulated_description:\n  + target properties: black, next to the door\n  + augmented target properties: has a cushion, has a remote control\n  + single target single anchor utterances:\n    - the sofa is next to the door\n    - the sofa is next to the cabinet\n  + augmented single target single anchor utterances:\n    - the sofa is next to the bookshelf",
+  "original_description": "the sofa next to the door, closest to the cabinet",
+  "reformulated_description": "Target: sofa\n- black, next to the door\n- has a cushion, has a remote control\n- the sofa is next to the door\n- the sofa is next to the cabinet\n- the sofa is next to the bookshelf"
+}

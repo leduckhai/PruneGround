@@ -7,8 +7,8 @@ Duc Cao Dinh*, Khai Le-Duc*, Florent Draye, Chris Ngo, Terry Jingchen Zhang, Ber
 - [x] Render guide (topview + oblique views)
 - [x] Topview box prediction by VLM
 - [x] Prune scene
-- [ ] Sideview render
-- [ ] Reformulation
+- [x] Local multiview render (MCDR sideviews)
+- [x] Description reformulation (MCDR)
 - [ ] Grounding
 
 ## 1. Environment Setup
@@ -76,3 +76,53 @@ The script prints the model's raw output and saves an annotated topview at `exam
 | `--prompt_style` | `full` | `full`: Appendix C prompt with topview + 4 oblique RGB-D views + reasoning steps. `simple`: topview only with a minimal grounding prompt — recommended for the 3B model, which tends to return a full-image box on the longer `full` prompt |
 | `--sideview_max_pixels` | `256*28*28` | Max pixels per oblique side-view image. Lower this if you hit CUDA OOM. Does not affect `topview.png` (kept at native resolution so `bbox_2d` coordinates stay aligned) |
 | `--max_new_tokens` | `512` | Max tokens to generate |
+| `--data_dir` | `examples/data` | Directory with raw ScanNet `.ply` and `.txt` files |
+| `--pruned_dir` | `examples/pruned` | Output directory for pruned `.ply` files |
+
+`LGSP.py` automatically runs the full pipeline end-to-end:
+1. Predict a 2D bounding box on the topview image
+2. Project the box back to 3D, prune the scene, save `{pruned_dir}/{scene_id}.ply`
+3. Render 2 local RGB side-view images of the pruned region (see below)
+
+## 5. Local Multi-View Rendering (MCDR)
+
+After pruning, `LGSP.py` renders two local RGB side-view images of the pruned scene from the x- and y-axis directions of its bounding box (Sec. 3.3 of the paper). These views are used as visual context for the description reformulation step (MCDR).
+
+Camera selection follows the paper (Appendix B, Fig. 5): for each axis, the camera position closer to the original scene center is chosen so the camera faces **outward** (away from the interior), minimising look-through-wall artefacts. The camera is slightly elevated above the pruned bounding box center to reduce occlusion by surrounding furniture. Depth maps are discarded.
+
+The two images are saved under `examples/output/{scene_id}/local_views/`:
+- `local_x.png` — view from the x-axis direction
+- `local_y.png` — view from the y-axis direction
+
+## 6. Description Reformulation (MCDR)
+
+Conditioned on the two local side views, the VLM decomposes the original free-form utterance into structured *single target – single anchor* statements, and augments it with anchors that are visible in the pruned region but absent from the original description (see Appendix C, Fig. 7 of the paper for the prompt):
+
+```bash
+python MCDR.py \
+    --scene_id scene0011_00 \
+    --output_dir examples/output \
+    --description "This is a single chair nearest the TV"
+```
+
+Requires `LGSP.py` to have been run first, since it consumes `local_views/local_x.png` and `local_views/local_y.png`.
+
+The result is written to `examples/output/{scene_id}/reformulation.json`:
+
+| Field | Content |
+|---|---|
+| `target` | Target object name |
+| `anchors` | Anchors explicitly mentioned in the original description |
+| `anchors_visual` | Anchors detected in the side views but absent from the description |
+| `target_properties` / `augmented_target_properties` | Target attributes, stated and inferred |
+| `utterances` / `augmented_utterances` | Single target – single anchor statements |
+| `reformulated_description` | The flattened description passed to the grounder |
+| `raw` | The model's unparsed output |
+
+**Useful flags:**
+
+| Flag | Default | Description |
+|---|---|---|
+| `--model_name` | `Qwen/Qwen2.5-VL-3B-Instruct` | HuggingFace model ID |
+| `--max_new_tokens` | `768` | Max tokens to generate (the structured output is longer than a bounding box) |
+| `--sideview_max_pixels` | unset | Max pixels per side-view image. Set this if you hit CUDA OOM |
