@@ -1,5 +1,7 @@
 # PruneGround: Plug-and-play Spatial Pruning for 3D Visual Grounding
 
+**EMNLP 2026 (Oral)**
+
 Duc Cao Dinh*, Khai Le-Duc*, Florent Draye, Chris Ngo, Terry Jingchen Zhang, Bernhard Schölkopf, Zhijing Jin
 
 ## Status
