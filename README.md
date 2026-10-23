@@ -71,15 +71,15 @@ ScanRefer reports accuracy at two 3D intersection-over-union thresholds: **Acc@0
 | 3D-SPS | CVPR | 84.1 | 66.7 | 40.3 | 29.8 | 48.8 | 37.0 |
 | EDA | CVPR | 85.8 | 68.6 | 49.1 | 37.6 | 54.6 | 42.3 |
 | ConcreteNet | ECCV | 86.4 | 82.1 | 42.4 | 38.4 | 50.6 | 46.5 |
-| Chat-Scene | NeurIPS | 89.6 | <u>82.5</u> | 47.8 | 42.9 | 55.5 | 50.2 |
+| Chat-Scene | NeurIPS | 89.6 | <ins>82.5</ins> | 47.8 | 42.9 | 55.5 | 50.2 |
 | VPP-Net | CVPR | 86.1 | 67.1 | 50.3 | 39.0 | 55.7 | 43.3 |
 | G³-LQ | CVPR | 88.6 | 73.3 | 50.2 | 39.7 | 56.0 | 44.7 |
 | MA²TransVG | CVPR | 86.3 | 74.1 | 53.8 | 41.4 | 57.9 | 45.7 |
 | MCLN | ECCV | 86.9 | 72.7 | 52.0 | 40.8 | 57.2 | 45.5 |
 | PQ3D | ECCV | 86.7 | 78.3 | 51.5 | 46.2 | 57.0 | 51.2 |
-| VGMamba | ICCV | **91.9** | 79.6 | 54.8 | <u>47.6</u> | 60.0 | <u>53.9</u> |
-| PanoGrounder | arXiv | 84.3 | — | <u>55.3</u> | — | <u>61.0</u> | — |
-| **PruneGround (Ours)** | — | <u>90.2</u> | **84.7** | **57.6** | **49.4** | **63.8** | **56.1** |
+| VGMamba | ICCV | **91.9** | 79.6 | 54.8 | <ins>47.6</ins> | 60.0 | <ins>53.9</ins> |
+| PanoGrounder | arXiv | 84.3 | — | <ins>55.3</ins> | — | <ins>61.0</ins> | — |
+| **PruneGround (Ours)** | — | <ins>90.2</ins> | **84.7** | **57.6** | **49.4** | **63.8** | **56.1** |
 
 <sub>Bold: best result per column; underline: second-best result per column.</sub>
 
@@ -101,7 +101,7 @@ Both benchmarks report **Acc@0.5 (3D IoU)**. *Easy* and *Hard* separate cases by
 | LIBA | AAAI | — | 57.2 | 60.3 | — | 64.5 |
 | ViewSRD | ICCV | 75.3 | 64.8 | 68.6 | 70.6 | 69.9 |
 | VGMamba | ICCV | — | 61.4 | — | — | 68.3 |
-| PanoGrounder | arXiv | <u>82.2</u> | <u>67.2</u> | <u>70.5</u> | <u>76.3</u> | <u>74.6</u> |
+| PanoGrounder | arXiv | <ins>82.2</ins> | <ins>67.2</ins> | <ins>70.5</ins> | <ins>76.3</ins> | <ins>74.6</ins> |
 | **PruneGround (Ours)** | — | **84.6** | **68.8** | **71.2** | **76.6** | **75.1** |
 
 **Sr3D** — PruneGround obtains **81.5% Overall**, including **76.5% on Hard** examples. The published comparison does **not** show the best result for PruneGround on the *View-D* subset (61.7%).
@@ -116,9 +116,9 @@ Both benchmarks report **Acc@0.5 (3D IoU)**. *Easy* and *Hard* separate cases by
 | MA²TransVG | CVPR | — | 69.3 | — | — | 73.9 |
 | PQ3D | ICCV | 78.8 | 68.2 | 51.5 | 76.7 | 75.6 |
 | LIBA | AAAI | — | 70.2 | 61.7 | — | 75.8 |
-| ViewSRD | ICCV | 78.3 | 70.6 | <u>69.0</u> | 76.2 | 76.0 |
-| VGMamba | ICCV | — | <u>74.4</u> | — | — | <u>81.3</u> |
-| PanoGrounder | arXiv | <u>81.3</u> | 74.2 | 60.5 | <u>80.0</u> | 79.1 |
+| ViewSRD | ICCV | 78.3 | 70.6 | <ins>69.0</ins> | 76.2 | 76.0 |
+| VGMamba | ICCV | — | <ins>74.4</ins> | — | — | <ins>81.3</ins> |
+| PanoGrounder | arXiv | <ins>81.3</ins> | 74.2 | 60.5 | <ins>80.0</ins> | 79.1 |
 | **PruneGround (Ours)** | — | **83.7** | **76.5** | 61.7 | **82.4** | **81.5** |
 
 <sub>Bold: best result per column; underline: second-best result per column. Table 2 is split into Nr3D and Sr3D for readability.</sub>
