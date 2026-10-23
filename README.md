@@ -6,13 +6,13 @@
 
 ### Plug-and-Play Spatial Pruning for 3D Visual Grounding
 
-[![EMNLP 2026 Oral](https://img.shields.io/badge/EMNLP%202026-Oral-8A2BE2?style=for-the-badge)](https://2026.emnlp.org/)
+[![EMNLP 2026 Oral](https://img.shields.io/badge/EMNLP%202026-Oral-DA70D6?style=for-the-badge)](https://2026.emnlp.org/)
 [![Paper](https://img.shields.io/badge/arXiv-2606.31148-B31B1B?style=for-the-badge)](https://arxiv.org/abs/2606.31148)
 [![Code](https://img.shields.io/badge/GitHub-Code-181717?style=for-the-badge&logo=github)](https://github.com/leduckhai/PruneGround)
 
-**[Duc Cao Dinh](https://caodinhduc.github.io/)<sup>*</sup> · [Khai Le-Duc](https://github.com/leduckhai)<sup>*</sup> · [Florent Draye](https://www.fdraye.com/) · [Chris Ngo](https://sg.linkedin.com/in/chris-ngo-6ba2136/) · [Terry Jingchen Zhang](https://terry-zhang.notion.site/) · [Bernhard Schölkopf](https://is.mpg.de/en/people/bs) · [Zhijing Jin](https://zhijing-jin.com/home/)**
+**[Duc Cao Dinh](https://caodinhduc.github.io/)<sup>&#42;</sup> · [Khai Le-Duc](https://github.com/leduckhai)<sup>&#42;</sup> · [Florent Draye](https://www.fdraye.com/) · [Chris Ngo](https://sg.linkedin.com/in/chris-ngo-6ba2136/) · [Terry Jingchen Zhang](https://terry-zhang.notion.site/) · [Bernhard Schölkopf](https://is.mpg.de/en/people/bs) · [Zhijing Jin](https://zhijing-jin.com/home/)**
 
-<sub>* Equal contribution</sub>
+<sub>&#42; Equal contribution</sub>
 
 **Less clutter. More context. Better grounding.**
 
@@ -28,22 +28,108 @@ It then renders **local multi-view observations** of the pruned region and refor
 
 > **Core idea:** Instead of asking a grounder to search the entire scene, first narrow down *where to look* and clarify *what to look for*.
 
+### 💡 Motivation: Focus on What Matters (Figure 1)
+
+A 3D scene can contain several objects of the same category. The language description often includes spatial cues—such as a relationship to a door or another nearby object—that make only part of the scene relevant. Figure 1 illustrates why concentrating on **language-relevant regions** can be more useful than reasoning over every candidate object.
+
+<div align="center">
+  <img src="https://arxiv.org/html/2606.31148v3/introduction_1.png" alt="Figure 1: A 3D scene and top-view illustrating how spatial descriptions identify different relevant regions" width="850" />
+  <br />
+  <sub>Figure 1 — Motivation for language-guided spatial attention. Source: <a href="https://arxiv.org/abs/2606.31148">PruneGround</a>.</sub>
+</div>
+
 ## 🔍 Pipeline at a Glance
 
-```mermaid
-flowchart LR
-    A[3D Scene + Text Query] --> B[Top-down & Oblique Rendering]
-    B --> C[2D Box Prediction<br/>LGSP]
-    C --> D[3D Spatial Pruning]
-    D --> E[Local Multi-view Rendering]
-    E --> F[Description Reformulation<br/>MCDR]
-    F -.-> G[Downstream 3D Grounding<br/>Not yet available]
-```
+<div align="center">
+  <img src="https://arxiv.org/html/2606.31148v3/main_pipeline.png" alt="Figure 2: PruneGround framework with LGSP, MCDR, and LLM-Grounder" width="1100" />
+  <br />
+  <sub>Figure 2 — Overview of the three-stage PruneGround framework from the paper.</sub>
+</div>
 
-**Two currently available components:**
+The framework contains three complementary components:
 
-- **LGSP — Language-Guided Spatial Pruning:** A VLM predicts a 2D box from scene renderings; the box is projected into 3D to retain a candidate region.
-- **MCDR — Multi-View-Conditioned Description Reformulation:** Local views help decompose a free-form query into single-target, single-anchor statements and add visible, relevant anchors.
+1. **LGSP — Language-Guided Spatial Pruning:** Render global views, ask a frozen VLM to identify a language-relevant region, and retain the corresponding part of the 3D scene.
+2. **MCDR — Multi-View-Conditioned Description Reformulation:** Use local views of the pruned scene to simplify the query into target–anchor relations and supplement it with visible spatial context.
+3. **LLM-Grounder:** In the *paper's full pipeline*, a detection-pretrained spatial LLM is adapted for language-conditioned grounding using the pruned scene and reformulated description.
+
+> **Code release:** The commands documented below cover LGSP and MCDR. LLM-Grounder is described in the paper but is **not yet marked as released** in the checklist below.
+
+## 🏆 Benchmark Results
+
+We evaluate PruneGround on **ScanRefer**, **Nr3D**, and **Sr3D**. Tables 1 and 2 reproduce the comparisons reported in the [paper (arXiv v3)](https://arxiv.org/html/2606.31148v3). All entries are **grounding accuracy (%)**; higher is better. A dash (—) indicates that the paper does not report a score for that setting.
+
+### Table 1 — ScanRefer
+
+ScanRefer reports accuracy at two 3D intersection-over-union thresholds: **Acc@0.25** and **Acc@0.5**. The *Unique* subset contains a single object of the target class in each scene; *Multiple* contains same-class distractors. PruneGround achieves **63.8% Overall Acc@0.25** and **56.1% Overall Acc@0.5**, as reported in Table 1.
+
+| Method | Venue | Unique @0.25 | Unique @0.5 | Multiple @0.25 | Multiple @0.5 | Overall @0.25 | Overall @0.5 |
+|:--|:--|--:|--:|--:|--:|--:|--:|
+| ScanRefer | ECCV | 67.6 | 46.2 | 32.1 | 21.3 | 40.0 | 26.1 |
+| MVT | CVPR | 77.7 | 66.5 | 31.9 | 25.3 | 40.8 | 33.3 |
+| 3D-SPS | CVPR | 84.1 | 66.7 | 40.3 | 29.8 | 48.8 | 37.0 |
+| EDA | CVPR | 85.8 | 68.6 | 49.1 | 37.6 | 54.6 | 42.3 |
+| ConcreteNet | ECCV | 86.4 | 82.1 | 42.4 | 38.4 | 50.6 | 46.5 |
+| Chat-Scene | NeurIPS | 89.6 | <u>82.5</u> | 47.8 | 42.9 | 55.5 | 50.2 |
+| VPP-Net | CVPR | 86.1 | 67.1 | 50.3 | 39.0 | 55.7 | 43.3 |
+| G³-LQ | CVPR | 88.6 | 73.3 | 50.2 | 39.7 | 56.0 | 44.7 |
+| MA²TransVG | CVPR | 86.3 | 74.1 | 53.8 | 41.4 | 57.9 | 45.7 |
+| MCLN | ECCV | 86.9 | 72.7 | 52.0 | 40.8 | 57.2 | 45.5 |
+| PQ3D | ECCV | 86.7 | 78.3 | 51.5 | 46.2 | 57.0 | 51.2 |
+| VGMamba | ICCV | **91.9** | 79.6 | 54.8 | <u>47.6</u> | 60.0 | <u>53.9</u> |
+| PanoGrounder | arXiv | 84.3 | — | <u>55.3</u> | — | <u>61.0</u> | — |
+| **PruneGround (Ours)** | — | <u>90.2</u> | **84.7** | **57.6** | **49.4** | **63.8** | **56.1** |
+
+<sub>Source: Table 1 in the <a href="https://arxiv.org/html/2606.31148v3">paper</a>. Bold: best result per column; underline: second-best result per column.</sub>
+
+### Table 2 — Nr3D and Sr3D
+
+Both benchmarks report **Acc@0.5 (3D IoU)**. *Easy* and *Hard* separate cases by the number of same-class distractors; *View-D* and *View-I* indicate view-dependent and view-independent expressions. For readability on GitHub, the paper's combined Table 2 is displayed below as two dataset-specific tables, with the **same methods and numbers**.
+
+**Nr3D** — PruneGround obtains **75.1% Overall**, including **68.8% on Hard** examples.
+
+| Method | Venue | Easy | Hard | View-D | View-I | Overall |
+|:--|:--|--:|--:|--:|--:|--:|
+| ReferIt3D | ECCV | 43.6 | 27.9 | 32.5 | 37.1 | 35.6 |
+| ViL3DRel | NeurIPS | 70.2 | 57.4 | 62.0 | 64.5 | 64.4 |
+| 3D-VisTA | ICCV | 65.9 | 49.4 | 53.7 | 59.4 | 57.5 |
+| MIKASA | CVPR | 69.7 | 59.4 | 65.4 | 64.0 | 64.4 |
+| G³-LQ | CVPR | — | 50.7 | — | — | 58.4 |
+| MA²TransVG | CVPR | — | 57.6 | — | — | 65.2 |
+| PQ3D | ICCV | 73.3 | 56.7 | 60.7 | 67.0 | 64.9 |
+| LIBA | AAAI | — | 57.2 | 60.3 | — | 64.5 |
+| ViewSRD | ICCV | 75.3 | 64.8 | 68.6 | 70.6 | 69.9 |
+| VGMamba | ICCV | — | 61.4 | — | — | 68.3 |
+| PanoGrounder | arXiv | <u>82.2</u> | <u>67.2</u> | <u>70.5</u> | <u>76.3</u> | <u>74.6</u> |
+| **PruneGround (Ours)** | — | **84.6** | **68.8** | **71.2** | **76.6** | **75.1** |
+
+**Sr3D** — PruneGround obtains **81.5% Overall**, including **76.5% on Hard** examples. The published comparison does **not** show the best result for PruneGround on the *View-D* subset (61.7%).
+
+| Method | Venue | Easy | Hard | View-D | View-I | Overall |
+|:--|:--|--:|--:|--:|--:|--:|
+| ReferIt3D | ECCV | 44.7 | 31.5 | 39.2 | 40.8 | 40.8 |
+| ViL3DRel | NeurIPS | 74.9 | 67.9 | 63.8 | 73.2 | 72.8 |
+| 3D-VisTA | ICCV | 72.1 | 63.6 | 57.9 | 70.1 | 69.6 |
+| MIKASA | CVPR | 78.6 | 67.3 | **70.4** | 75.4 | 75.2 |
+| G³-LQ | CVPR | — | 66.3 | — | — | 73.1 |
+| MA²TransVG | CVPR | — | 69.3 | — | — | 73.9 |
+| PQ3D | ICCV | 78.8 | 68.2 | 51.5 | 76.7 | 75.6 |
+| LIBA | AAAI | — | 70.2 | 61.7 | — | 75.8 |
+| ViewSRD | ICCV | 78.3 | 70.6 | <u>69.0</u> | 76.2 | 76.0 |
+| VGMamba | ICCV | — | <u>74.4</u> | — | — | <u>81.3</u> |
+| PanoGrounder | arXiv | <u>81.3</u> | 74.2 | 60.5 | <u>80.0</u> | 79.1 |
+| **PruneGround (Ours)** | — | **83.7** | **76.5** | 61.7 | **82.4** | **81.5** |
+
+<sub>Source: Table 2 in the <a href="https://arxiv.org/html/2606.31148v3">paper</a>. Bold: best result per column; underline: second-best result per column. Scores and missing entries are reproduced from the paper; the table has only been split for layout.</sub>
+
+### 🖼️ Qualitative Results (Figure 3)
+
+Beyond benchmark scores, Figure 3 shows **what changes across the pipeline** on ScanRefer, Nr3D, and Sr3D: an input scene is spatially pruned, its original description is reformulated, and the grounder predicts a target box. In the reformulated-description column, **purple** marks the simplified text and **green** marks visually augmented information.
+
+<div align="center">
+  <img src="https://arxiv.org/html/2606.31148v3/images/qualitative.png" alt="Figure 3: Qualitative examples comparing original scenes, pruned scenes, reformulated descriptions, predictions and ground truth" width="1100" />
+  <br />
+  <sub>Figure 3 — Qualitative results from ScanRefer, Nr3D, and Sr3D, reproduced from the paper.</sub>
+</div>
 
 ## 🚧 Release Status
 
