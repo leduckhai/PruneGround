@@ -10,9 +10,12 @@
 [![Paper](https://img.shields.io/badge/arXiv-2606.31148-B31B1B?style=for-the-badge)](https://arxiv.org/abs/2606.31148)
 [![Code](https://img.shields.io/badge/GitHub-Code-181717?style=for-the-badge&logo=github)](https://github.com/leduckhai/PruneGround)
 
-**[Duc Cao Dinh](https://caodinhduc.github.io/)<sup>&#42;</sup> · [Khai Le-Duc](https://github.com/leduckhai)<sup>&#42;</sup> · [Florent Draye](https://www.fdraye.com/) · [Chris Ngo](https://sg.linkedin.com/in/chris-ngo-6ba2136/) · [Terry Jingchen Zhang](https://terry-zhang.notion.site/) · [Bernhard Schölkopf](https://is.mpg.de/en/people/bs) · [Zhijing Jin](https://zhijing-jin.com/home/)**
+**[Duc Cao Dinh](https://caodinhduc.github.io/)<sup><img src="assets/equal-contribution-star.svg" alt="Equal contribution" width="12" height="12" /></sup> · [Khai Le-Duc](https://github.com/leduckhai)<sup><img src="assets/equal-contribution-star.svg" alt="Equal contribution" width="12" height="12" /></sup> · [Florent Draye](https://www.fdraye.com/) · [Chris Ngo](https://sg.linkedin.com/in/chris-ngo-6ba2136/) · [Terry Jingchen Zhang](https://terry-zhang.notion.site/) · [Bernhard Schölkopf](https://is.mpg.de/en/people/bs) · [Zhijing Jin](https://zhijing-jin.com/home/)**
 
-<sub>&#42; Equal contribution</sub>
+<sub>Knovel Engineering Lab · University of Toronto · Vector Institute</sub>  
+<sub>MPI for Intelligent Systems, Tübingen · ELLIS Institute Tübingen · University of Oxford</sub>
+
+<sub><img src="assets/equal-contribution-star.svg" alt="" width="11" height="11" /> Equal contribution</sub>
 
 **Less clutter. More context. Better grounding.**
 
