@@ -1,11 +1,18 @@
+<div align="right">
+  <a href="https://2026.emnlp.org/">
+    <img src="https://2026.emnlp.org/assets/images/logos/emnlp_2026_logo_v1.png" alt="EMNLP 2026 official logo" width="180" />
+  </a>
+</div>
+
 <div align="center">
 
 <img src="https://arxiv.org/html/2606.31148/images/Framework_Icon.PNG" alt="PruneGround official icon — cube and scissors" width="80" />
 
 ### PruneGround: Plug-and-Play Spatial Pruning for 3D Visual Grounding
 
-[![Venue](https://img.shields.io/badge/EMNLP%202026-FFD1C1?style=flat-square)](https://2026.emnlp.org/)
-[![Oral](https://img.shields.io/badge/Oral-90EE90?style=flat-square)](https://2026.emnlp.org/)
+[![Venue](https://img.shields.io/badge/EMNLP%202026-DCCBFA?style=flat)](https://2026.emnlp.org/)
+[![Oral](https://img.shields.io/badge/Oral-F8D8EB?style=flat)](https://2026.emnlp.org/)
+[![Project Page](https://img.shields.io/badge/Project%20Page-Website-F3B2D8?style=flat&labelColor=B9A5F0)](https://leduckhai.github.io/PruneGround/)
 [![arXiv](https://img.shields.io/badge/arXiv%3A2606.31148-B31B1B?logo=arxiv&logoColor=white&style=flat)](https://arxiv.org/abs/2606.31148)
 [![GitHub PruneGround](https://img.shields.io/badge/GitHub-PruneGround-white?logo=github&logoColor=white&style=flat&labelColor=181717)](https://github.com/leduckhai/PruneGround)
 [![Stars](https://img.shields.io/github/stars/leduckhai/PruneGround?style=social)](https://github.com/leduckhai/PruneGround)
